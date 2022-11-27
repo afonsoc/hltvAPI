@@ -21,14 +21,14 @@ for i in playerArray:
     print(i)
 print(len(playerArray))
 
-testname = "FoX"
+testname = "ocean"
 
 def findByName(playerName):
     playerStats = {}
     relevantStats = ["Total kills", "Headshot %", "Total deaths", "K/D Ratio",
                      "Damage / Round", "Grenade dmg / Round", "Maps played", "Rounds played", "Kills / round",
                      "Assists / round", "Deaths / round", "Saved by teammate / round", "Saved teammates / round",
-                     "Rating 2.0"]
+                     "Rating 1.0"]
 
     for player in playerArray:
         if player['name'].upper() == playerName.upper():

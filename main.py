@@ -16,8 +16,8 @@ def findPlayerByName(playerName):
                      "Rating 1.0"]
 
     #Get parsed player page
-    EveryPlayerSoup = parsePage("https://www.hltv.org/stats/players")
-    allPlayers = EveryPlayerSoup.find_all("tr")
+    everyPlayerSoup = parsePage("https://www.hltv.org/stats/players")
+    allPlayers = everyPlayerSoup.find_all("tr")
 
     #Get players names and links to overview stats page
     for player in allPlayers:
@@ -43,3 +43,33 @@ def findPlayerByName(playerName):
     else:
         raise ValueError("Player %s not found" % repr(playerName))
 
+
+testname = "lol"
+
+def findTeamByName(teamName):
+
+    #Initiate data structures
+    teamStats = {}
+    teamArray = []
+
+    #Get parsed teams page
+    everyTeamSoup = parsePage("https://www.hltv.org/stats/teams")
+    allTeams = everyTeamSoup.find_all("tr")
+
+    #Get teams names and links to overview stats page
+    for team in allTeams:
+        if team.find("a") != None:
+            teamArray.append({'name': team.find("a").text,
+                    'link': team.find("a")["href"]})
+
+    for team in teamArray:
+        if type(teamName) != str:
+            raise AttributeError("Argument %s needs to be a string" % repr(teamName))
+
+        #check if the incoming team request matches value in list
+        elif team['name'].upper() == teamName.upper():
+            teamSoup = parsePage("https://www.hltv.org" + team['link'])
+
+    return json.dumps(teamStats, indent=1)
+
+print(findTeamByName(testname))

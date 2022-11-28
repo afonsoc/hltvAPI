@@ -39,12 +39,9 @@ def findPlayerByName(playerName):
             for span in allSpans:
                 if span.text in relevantStats:
                             playerStats.update({span.text.title().replace(" ", ""): span.find_next("span").text})
-            return json.dumps(playerStats, indent=1)
+            return json.dumps(playerStats, indent=2)
     else:
         raise ValueError("Player %s not found" % repr(playerName))
-
-
-testname = "lol"
 
 def findTeamByName(teamName):
 
@@ -70,6 +67,10 @@ def findTeamByName(teamName):
         elif team['name'].upper() == teamName.upper():
             teamSoup = parsePage("https://www.hltv.org" + team['link'])
 
-    return json.dumps(teamStats, indent=1)
-
-print(findTeamByName(testname))
+            #Get list of stats if above check was successful
+            allDivs = teamSoup.find_all("div", class_= "large-strong")
+            for div in allDivs:
+                teamStats.update({div.find_next().text.title().replace(" ", ""): div.text.replace(" ", "")})
+            return json.dumps(teamStats, indent=2)
+    else:
+        raise ValueError("Team %s not found" % repr(teamName))

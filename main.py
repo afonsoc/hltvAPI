@@ -16,8 +16,8 @@ def findPlayerByName(playerName):
                      "Rating 1.0"]
 
     #Get parsed player page
-    EveryPlayerSoup = parsePage("https://www.hltv.org/stats/players")
-    allPlayers = EveryPlayerSoup.find_all("tr")
+    everyPlayerSoup = parsePage("https://www.hltv.org/stats/players")
+    allPlayers = everyPlayerSoup.find_all("tr")
 
     #Get players names and links to overview stats page
     for player in allPlayers:
@@ -39,7 +39,38 @@ def findPlayerByName(playerName):
             for span in allSpans:
                 if span.text in relevantStats:
                             playerStats.update({span.text.title().replace(" ", ""): span.find_next("span").text})
-            return json.dumps(playerStats, indent=1)
+            return json.dumps(playerStats, indent=2)
     else:
         raise ValueError("Player %s not found" % repr(playerName))
 
+def findTeamByName(teamName):
+
+    #Initiate data structures
+    teamStats = {}
+    teamArray = []
+
+    #Get parsed teams page
+    everyTeamSoup = parsePage("https://www.hltv.org/stats/teams")
+    allTeams = everyTeamSoup.find_all("tr")
+
+    #Get teams names and links to overview stats page
+    for team in allTeams:
+        if team.find("a") != None:
+            teamArray.append({'name': team.find("a").text,
+                    'link': team.find("a")["href"]})
+
+    for team in teamArray:
+        if type(teamName) != str:
+            raise AttributeError("Argument %s needs to be a string" % repr(teamName))
+
+        #check if the incoming team request matches value in list
+        elif team['name'].upper() == teamName.upper():
+            teamSoup = parsePage("https://www.hltv.org" + team['link'])
+
+            #Get list of stats if above check was successful
+            allDivs = teamSoup.find_all("div", class_= "large-strong")
+            for div in allDivs:
+                teamStats.update({div.find_next().text.title().replace(" ", ""): div.text.replace(" ", "")})
+            return json.dumps(teamStats, indent=2)
+    else:
+        raise ValueError("Team %s not found" % repr(teamName))

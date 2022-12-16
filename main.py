@@ -18,11 +18,10 @@ def findPlayerByName(playerName):
                      "Rating 1.0"]
 
     #Get parsed player page
-    everyPlayerSoup = parsePage("https://www.hltv.org/stats/players")
-    allPlayers = everyPlayerSoup.find_all("tr")
+    everyPlayerSoup = parsePage("https://www.hltv.org/stats/players").find_all("tr")
 
     #Get players names and links to overview stats page
-    for player in allPlayers:
+    for player in everyPlayerSoup:
         if player.find("a") != None:
             playerArray.append({'name': player.find("a").text,
                     'link': player.find("a")["href"]})
@@ -52,11 +51,10 @@ def findTeamByName(teamName):
     teamArray = []
 
     #Get parsed teams page
-    everyTeamSoup = parsePage("https://www.hltv.org/stats/teams")
-    allTeams = everyTeamSoup.find_all("tr")
+    everyTeamSoup = parsePage("https://www.hltv.org/stats/teams").find_all("tr")
 
     #Get teams names and links to overview stats page
-    for team in allTeams:
+    for team in everyTeamSoup:
         if team.find("a") != None:
             teamArray.append({'name': team.find("a").text,
                     'link': team.find("a")["href"]})

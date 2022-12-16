@@ -2,6 +2,8 @@ import requests
 import json
 from bs4 import BeautifulSoup
 
+HLTV_PREFIX =  "https://www.hltv.org"
+
 def parsePage(url):
     return BeautifulSoup(requests.get(url).text, "lxml")
 
@@ -74,3 +76,37 @@ def findTeamByName(teamName):
             return json.dumps(teamStats, indent=2)
     else:
         raise ValueError("Team %s not found" % repr(teamName))
+
+def findAllPlayers():
+
+    allPlayersSoup = parsePage("https://www.hltv.org/stats/players")
+
+    allPlayers = allPlayersSoup.find_all("tr")
+
+    playerDict = {}
+
+    for player in allPlayers:
+        if player.find("a") != None:
+            playerDict.update({player.find("a")["href"].split("/")[-2]:{"name": player.find("a").text,
+            'KD': player.find("td", class_ = "statsDetail").text,
+            'Rating': player.find("td", class_ = "ratingCol").text,
+            'link': HLTV_PREFIX + player.find("a")["href"]}})
+
+    return json.dumps(playerDict, indent=2)
+
+def findAllTeams():
+
+    allTeamsSoup = parsePage("https://www.hltv.org/stats/teams")
+
+    allTeams = allTeamsSoup.find_all("tr")
+
+    teamDict = {}
+    
+    for team in allTeams:
+        if team.find("a") != None:
+            teamDict.update({team.find("a")["href"].split("/")[-2]:{"name": team.find("a").text,
+            'KD': team.find("td", class_ = "statsDetail").text,
+            'Rating': team.find("td", class_ = "ratingCol").text,
+            'link': HLTV_PREFIX + team.find("a")["href"]}})
+
+    return json.dumps(teamDict, indent=2)

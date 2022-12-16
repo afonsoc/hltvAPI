@@ -79,13 +79,12 @@ def findTeamByName(teamName):
 
 def findAllPlayers():
 
-    allPlayersSoup = parsePage("https://www.hltv.org/stats/players")
-
-    allPlayers = allPlayersSoup.find_all("tr")
-
+    #Get full list of players
+    allPlayersSoup = parsePage("https://www.hltv.org/stats/players").find_all("tr")
     playerDict = {}
 
-    for player in allPlayers:
+    #Add values from parsed list to dictionary
+    for player in allPlayersSoup:
         if player.find("a") != None:
             playerDict.update({player.find("a")["href"].split("/")[-2]:{"name": player.find("a").text,
             'KD': player.find("td", class_ = "statsDetail").text,
@@ -96,13 +95,12 @@ def findAllPlayers():
 
 def findAllTeams():
 
-    allTeamsSoup = parsePage("https://www.hltv.org/stats/teams")
-
-    allTeams = allTeamsSoup.find_all("tr")
-
+    #get full list of teams
+    allTeamsSoup = parsePage("https://www.hltv.org/stats/teams").find_all("tr")
     teamDict = {}
     
-    for team in allTeams:
+    #Add values from parsed list to dictionary
+    for team in allTeamsSoup:
         if team.find("a") != None:
             teamDict.update({team.find("a")["href"].split("/")[-2]:{"name": team.find("a").text,
             'KD': team.find("td", class_ = "statsDetail").text,

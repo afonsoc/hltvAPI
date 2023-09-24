@@ -1,7 +1,9 @@
 import random
+import json
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, HTTPException
 from selenium import webdriver
+import redis
 
 HLTV_PREFIX =  "https://www.hltv.org"
 USER_AGENT_LIST = [ 
@@ -11,6 +13,7 @@ USER_AGENT_LIST = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36'
 ] 
 app = FastAPI()
+cache = redis.Redis(host='localhost', port=6379, decode_responses=True)
 
 @app.get("/")
 async def root():
@@ -27,7 +30,7 @@ def parsePage(url):
     return BeautifulSoup(requestPage, "lxml")
 
 @app.get("/players/{playerName}")
-async def findPlayerByName(playerName):
+async def findPlayerByName(playerName:str):
 
     #Initiate data structures
     playerStats = {}
@@ -37,6 +40,14 @@ async def findPlayerByName(playerName):
                      "Assists / round", "Deaths / round", "Saved by teammate / round", "Saved teammates / round",
                      "Rating 1.0"]
 
+
+    # if cache.get("PLAYERS"):
+    #     playersBase = json.loads(cache.get("PLAYERS"))
+    #     if playersBase[playerName.upper()]:
+    #         return playerName
+    #     else:
+    #         raise HTTPException(status_code=404, detail="Player %s not found" % repr(playerName))
+    # else:
     #Get parsed player page
     everyPlayerSoup = parsePage("https://www.hltv.org/stats/players").find_all("tr")
 
@@ -46,13 +57,9 @@ async def findPlayerByName(playerName):
             playerArray.append({'name': player.find("a").text,
                     'link': player.find("a")["href"]})
 
-
+    #check if the incoming player request matches value in list
     for player in playerArray:
-        if type(playerName) != str:
-            raise AttributeError("Argument %s needs to be a string" % repr(playerName))
-
-        #check if the incoming player request matches value in list
-        elif player['name'].upper() == playerName.upper():
+        if player['name'].upper() == playerName.upper():
             playerSoup = parsePage("https://www.hltv.org" + player['link'])
             
             #Get list of stats if above check was successful
@@ -65,7 +72,7 @@ async def findPlayerByName(playerName):
         raise HTTPException(status_code=404, detail="Player %s not found" % repr(playerName))
 
 @app.get("/teams/{teamName}")
-async def findTeamByName(teamName):
+async def findTeamByName(teamName:str):
 
     #Initiate data structures
     teamStats = {}
@@ -80,12 +87,9 @@ async def findTeamByName(teamName):
             teamArray.append({'name': team.find("a").text,
                     'link': team.find("a")["href"]})
 
-    for team in teamArray:
-        if type(teamName) != str:
-            raise AttributeError("Argument %s needs to be a string" % repr(teamName))
-
         #check if the incoming team request matches value in list
-        elif team['name'].upper() == teamName.upper():
+    for team in teamArray:
+        if team['name'].upper() == teamName.upper():
             teamSoup = parsePage("https://www.hltv.org" + team['link'])
 
             #Get list of stats if above check was successful
@@ -94,38 +98,56 @@ async def findTeamByName(teamName):
                 teamStats.update({div.find_next().text.title().replace(" ", ""): div.text.replace(" ", "")})
             return teamStats
     else:
-        raise ValueError("Team %s not found" % repr(teamName))
+        raise HTTPException(status_code=404, detail="Team %s not found" % repr(teamName))
 
-@app.get("/players/")
+@app.get("/players")
 async def findAllPlayers():
 
     #Get full list of players
-    allPlayersSoup = parsePage("https://www.hltv.org/stats/players").find_all("tr")
     playerDict = {}
 
-    #Add values from parsed list to dictionary
-    for player in allPlayersSoup:
-        if player.find("a") != None:
-            playerDict.update({player.find("a")["href"].split("/")[-2]:{"name": player.find("a").text,
-            'KD': player.find("td", class_ = "statsDetail").text,
-            'Rating': player.find("td", class_ = "ratingCol").text,
-            'link': HLTV_PREFIX + player.find("a")["href"]}})
+    if cache.get("PLAYERS"):
+        # for player in teams_cache:
+        #     cacheValue = teams_cache[player]
+        #     for key in cacheValue:
+        #         playerDict.update({key: cacheValue[key]})
+        return json.loads(cache.get("PLAYERS"))
+    else:
+        #Add values from parsed list to dictionary
+        allPlayersSoup = parsePage("https://www.hltv.org/stats/players").find_all("tr")
+        for player in allPlayersSoup:
+            if player.find("a") != None:
+                playerDict.update({ player.find("a").text.upper():{
+                    'KD': player.find("td", class_ = "statsDetail").text,
+                    'Rating': player.find("td", class_ = "ratingCol").text,
+                    'link': HLTV_PREFIX + player.find("a")["href"]
+                }})
+        cache.set("PLAYERS", json.dumps(playerDict))
+        return playerDict
+        
 
-    return playerDict
 
-@app.get("/teams/")
+@app.get("/teams")
 async def findAllTeams():
 
     #get full list of teams
-    allTeamsSoup = parsePage("https://www.hltv.org/stats/teams").find_all("tr")
     teamDict = {}
-    
-    #Add values from parsed list to dictionary
-    for team in allTeamsSoup:
-        if team.find("a") != None:
-            teamDict.update({team.find("a")["href"].split("/")[-2]:{"name": team.find("a").text,
-            'KD': team.find("td", class_ = "statsDetail").text,
-            'Rating': team.find("td", class_ = "ratingCol").text,
-            'link': HLTV_PREFIX + team.find("a")["href"]}})
 
-    return teamDict
+    if cache.get("TEAMS"):
+        # for team in json.loads(cache.get("TEAMS")):
+        #     cacheValue = json.loads(cache.get(team))
+        #     for key in cacheValue:
+        #         teamDict.update({key: cacheValue[key]})
+        return json.loads(cache.get("TEAMS"))
+    else:
+        #Add values from parsed list to dictionary
+        allTeamsSoup = parsePage("https://www.hltv.org/stats/teams").find_all("tr")
+        for team in allTeamsSoup:
+            if team.find("a") != None:
+                teamDict.update({team.find("a").text.upper():{
+                    'KD': team.find("td", class_ = "statsDetail").text,
+                    'Rating': team.find("td", class_ = "ratingCol").text,
+                    'link': HLTV_PREFIX + team.find("a")["href"]
+                }})
+        cache.set("TEAMS", json.dumps(teamDict))
+        return teamDict

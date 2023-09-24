@@ -1,2 +1,5 @@
 #ignore local virtual env
 venv/
+hltvenv
+__pycache__
+chromedriver

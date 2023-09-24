@@ -1,13 +1,33 @@
-import requests
-import json
+import random
 from bs4 import BeautifulSoup
+from fastapi import FastAPI, HTTPException
+from selenium import webdriver
 
 HLTV_PREFIX =  "https://www.hltv.org"
+USER_AGENT_LIST = [ 
+	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36', 
+	'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36', 
+	'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.116 Safari/537.36'
+] 
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"test message": "this the the testing message value"}
 
 def parsePage(url):
-    return BeautifulSoup(requests.get(url).text, "lxml")
+    options = webdriver.ChromeOptions()
+    options.add_argument("headless")
+    options.add_argument(f'user-agent={random.choice(USER_AGENT_LIST)}')
+    driver = webdriver.Chrome(options=options)
+    driver.get(url)
+    requestPage = driver.page_source
+    driver.quit()
+    return BeautifulSoup(requestPage, "lxml")
 
-def findPlayerByName(playerName):
+@app.get("/players/{playerName}")
+async def findPlayerByName(playerName):
 
     #Initiate data structures
     playerStats = {}
@@ -40,11 +60,12 @@ def findPlayerByName(playerName):
             for span in allSpans:
                 if span.text in relevantStats:
                             playerStats.update({span.text.title().replace(" ", ""): span.find_next("span").text})
-            return json.dumps(playerStats, indent=2)
+            return playerStats
     else:
-        raise ValueError("Player %s not found" % repr(playerName))
+        raise HTTPException(status_code=404, detail="Player %s not found" % repr(playerName))
 
-def findTeamByName(teamName):
+@app.get("/teams/{teamName}")
+async def findTeamByName(teamName):
 
     #Initiate data structures
     teamStats = {}
@@ -71,11 +92,12 @@ def findTeamByName(teamName):
             allDivs = teamSoup.find_all("div", class_= "large-strong")
             for div in allDivs:
                 teamStats.update({div.find_next().text.title().replace(" ", ""): div.text.replace(" ", "")})
-            return json.dumps(teamStats, indent=2)
+            return teamStats
     else:
         raise ValueError("Team %s not found" % repr(teamName))
 
-def findAllPlayers():
+@app.get("/players/")
+async def findAllPlayers():
 
     #Get full list of players
     allPlayersSoup = parsePage("https://www.hltv.org/stats/players").find_all("tr")
@@ -89,9 +111,10 @@ def findAllPlayers():
             'Rating': player.find("td", class_ = "ratingCol").text,
             'link': HLTV_PREFIX + player.find("a")["href"]}})
 
-    return json.dumps(playerDict, indent=2)
+    return playerDict
 
-def findAllTeams():
+@app.get("/teams/")
+async def findAllTeams():
 
     #get full list of teams
     allTeamsSoup = parsePage("https://www.hltv.org/stats/teams").find_all("tr")
@@ -105,4 +128,4 @@ def findAllTeams():
             'Rating': team.find("td", class_ = "ratingCol").text,
             'link': HLTV_PREFIX + team.find("a")["href"]}})
 
-    return json.dumps(teamDict, indent=2)
+    return teamDict
